@@ -634,6 +634,7 @@
     let currentPlayer = "";
     let timerId = 0;
     let secondsLeft = 20;
+    let quizStartedAt = 0;
     const secondsPerQuestion = 20;
     const supabaseUrl = "https://vukxeglljxgpvbqulsrl.supabase.co";
     const supabaseKey = "sb_publishable_s85hzn9UReEVyub-SXRtvw_8DiM_YZF";
@@ -666,6 +667,14 @@
       }).format(new Date(value));
     }
 
+    function formatDuration(totalSeconds) {
+      const safeSeconds = Math.max(Number(totalSeconds) || 0, 0);
+      const minutes = Math.floor(safeSeconds / 60);
+      const seconds = safeSeconds % 60;
+      if (minutes === 0) return seconds + " שנ'";
+      return minutes + ":" + String(seconds).padStart(2, "0") + " דק'";
+    }
+
     function supabaseHeaders(extra = {}) {
       return {
         apikey: supabaseKey,
@@ -681,12 +690,13 @@
         correctAnswers: Number(entry.correct_answers) || 0,
         total: Number(entry.total) || 0,
         percent: Number(entry.percent) || 0,
+        durationSeconds: Number(entry.duration_seconds) || 0,
         date: entry.created_at || entry.date || new Date().toISOString()
       };
     }
 
     async function getLeaderboard() {
-      const url = `${scoresEndpoint}?select=name,score,correct_answers,total,percent,created_at&order=score.desc&order=percent.desc&order=created_at.asc&limit=10`;
+      const url = `${scoresEndpoint}?select=name,score,correct_answers,total,percent,duration_seconds,created_at&order=score.desc&order=percent.desc&order=duration_seconds.asc&order=created_at.asc&limit=10`;
       const response = await fetch(url, {
         headers: supabaseHeaders()
       });
@@ -713,6 +723,7 @@
           <td>${escapeHtml(entry.name)}</td>
           <td>${entry.score} נק'</td>
           <td>${entry.percent}%</td>
+          <td>${formatDuration(entry.durationSeconds)}</td>
           <td>${formatDate(entry.date)}</td>
         </tr>
       `).join("");
@@ -725,7 +736,8 @@
               <th>שם</th>
               <th>ניקוד</th>
               <th>%</th>
-              <th>זמן</th>
+              <th>משך</th>
+              <th>מועד</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -753,13 +765,14 @@
       }
     }
 
-    async function addScoreToLeaderboard(percent) {
+    async function addScoreToLeaderboard(percent, durationSeconds) {
       const payload = {
         name: currentPlayer,
         score,
         correct_answers: correctAnswers,
         total: playQuestions.length,
-        percent
+        percent,
+        duration_seconds: durationSeconds
       };
 
       const response = await fetch(scoresEndpoint, {
@@ -876,6 +889,7 @@
       correctAnswers = 0;
       locked = false;
       given = [];
+      quizStartedAt = Date.now();
       prepareQuestions();
       $("start").classList.add("hide");
       $("end").classList.add("hide");
@@ -948,6 +962,7 @@
     function finish() {
       stopTimer();
       const percent = Math.round(correctAnswers / playQuestions.length * 100);
+      const durationSeconds = Math.max(Math.round((Date.now() - quizStartedAt) / 1000), 0);
       $("quiz").classList.add("hide");
       $("end").classList.remove("hide");
       $("fill").style.width = "100%";
@@ -957,7 +972,7 @@
         : percent >= 60
           ? "יפה מאוד. עוד סיבוב קצר יחזק את המונחים הפחות בטוחים."
           : "כדאי לעבור שוב על המונחים ואז לנסות פעם נוספת.";
-      addScoreToLeaderboard(percent).catch(() => {
+      addScoreToLeaderboard(percent, durationSeconds).catch(() => {
         renderLeaderboardMessage("endLeaderboard", "הציון לא נשמר. בדקו שהטבלה וההרשאות ב-Supabase הוגדרו.");
       });
       renderSummary();
