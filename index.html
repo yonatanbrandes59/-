@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>חידון בטיחות חשמל</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: max(env(safe-area-inset-top), 18px) clamp(12px, 3vw, 34px) max(env(safe-area-inset-bottom), 18px);
+      background:
+        radial-gradient(circle at 18% 8%, rgba(255, 194, 38, 0.18), transparent 28%),
+        linear-gradient(180deg, #0b1220 0%, #101827 100%);
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .wrap {
+      display: grid;
+      width: min(100%, 980px);
+      min-height: calc(100vh - 36px);
+      margin: 0 auto;
+      padding: clamp(10px, 3vh, 28px) 0;
+      align-items: center;
+    }
+
+    .card {
+      width: min(100%, 620px);
+      margin: 0 auto;
+      padding: clamp(22px, 4vw, 38px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      background: #1d2838;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .hide {
+      display: none;
+    }
+
+    .icon {
+      display: grid;
+      width: 62px;
+      height: 62px;
+      margin-bottom: 16px;
+      place-items: center;
+      border-radius: 20px;
+      background: #ffc226;
+      color: #101827;
+    }
+
+    .icon svg {
+      width: 36px;
+      height: 36px;
+      stroke-width: 2.5;
+    }
+
+    .title {
+      margin: 0 0 10px;
+      font-size: clamp(30px, 7vw, 48px);
+      line-height: 1.05;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      margin: 0;
+      color: #c8d1de;
+      font-size: clamp(17px, 2.8vw, 21px);
+      line-height: 1.5;
+    }
+
+    .small {
+      margin: 14px 0 0;
+      color: #aab6c6;
+      font-size: clamp(14px, 2.3vw, 16px);
+      line-height: 1.45;
+    }
+
+    .btn {
+      width: 100%;
+      min-height: 62px;
+      margin-top: 22px;
+      padding: 16px 18px;
+      border: 0;
+      border-radius: 18px;
+      background: #ffc226;
+      color: #101827;
+      cursor: pointer;
+      font-size: clamp(19px, 3.5vw, 23px);
+      font-weight: 900;
+    }
+
+    .btn:active,
+    .choice:active {
+      transform: scale(0.98);
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      color: #c8d1de;
+      font-weight: 700;
+    }
+
+    .bar {
+      height: 12px;
+      margin-top: 16px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: #101827;
+    }
+
+    .fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: #ffc226;
+      transition: width 0.25s ease;
+    }
+
+    .topic {
+      display: inline-flex;
+      margin-top: 18px;
+      padding: 5px 10px;
+      border: 1px solid #344258;
+      border-radius: 999px;
+      color: #ffc226;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .q {
+      margin: 14px 0 20px;
+      font-size: clamp(22px, 4vw, 32px);
+      font-weight: 900;
+      line-height: 1.35;
+    }
+
+    .choice {
+      display: block;
+      width: 100%;
+      min-height: 58px;
+      margin: 12px 0;
+      padding: 16px;
+      border: 2px solid #344258;
+      border-radius: 16px;
+      background: #111a28;
+      color: #ffffff;
+      cursor: pointer;
+      text-align: right;
+      font-size: clamp(17px, 2.7vw, 20px);
+      line-height: 1.35;
+    }
+
+    .choice.correct {
+      border-color: #2ed573;
+      background: #17472e;
+    }
+
+    .choice.wrong {
+      border-color: #ff4757;
+      background: #5a1e25;
+    }
+
+    .choice:disabled {
+      cursor: default;
+    }
+
+    .explain {
+      min-height: 52px;
+      margin-top: 14px;
+      color: #c8d1de;
+      font-size: clamp(15px, 2.3vw, 18px);
+      line-height: 1.45;
+    }
+
+    .result {
+      margin: 10px 0;
+      color: #ffc226;
+      font-size: clamp(38px, 8vw, 58px);
+      font-weight: 900;
+    }
+
+    .summary {
+      margin-top: 20px;
+      padding-top: 8px;
+    }
+
+    .summary details {
+      margin-top: 12px;
+      border-top: 1px solid #344258;
+      color: #c8d1de;
+    }
+
+    .summary summary {
+      padding: 14px 0 8px;
+      color: #ffffff;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .summary p {
+      margin: 5px 0 12px;
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    @media (min-width: 780px) {
+      .card {
+        width: min(100%, 760px);
+      }
+
+      #quiz.card {
+        width: min(100%, 860px);
+      }
+
+      #answers {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .choice {
+        min-height: 86px;
+        margin: 0;
+      }
+    }
+
+    @media (min-width: 1100px) {
+      .wrap {
+        width: min(100%, 1040px);
+      }
+
+      #start.card,
+      #end.card {
+        width: min(100%, 760px);
+      }
+    }
+
+    @media (max-height: 680px) and (min-width: 720px) {
+      .wrap {
+        align-items: start;
+      }
+
+      .card {
+        padding: 22px 26px;
+      }
+
+      .icon {
+        width: 50px;
+        height: 50px;
+        margin-bottom: 10px;
+        border-radius: 16px;
+      }
+
+      .icon svg {
+        width: 30px;
+        height: 30px;
+      }
+
+      .q {
+        margin-bottom: 14px;
+      }
+
+      .choice {
+        min-height: 64px;
+        padding: 13px 15px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      body {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .card {
+        padding: 22px 18px;
+        border-radius: 22px;
+      }
+
+      .top {
+        font-size: 15px;
+      }
+
+      .btn {
+        min-height: 58px;
+      }
+    }
+
+    @media (max-width: 330px) {
+      .card {
+        padding: 18px 14px;
+        border-radius: 18px;
+      }
+
+      .choice {
+        padding: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section id="start" class="card">
+      <div class="icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"></path>
+        </svg>
+      </div>
+      <h1 class="title">חידון בטיחות חשמל</h1>
+      <p class="sub">חידון קצר על הארקה, פאזה, אפס, גרילנדה, פרוז'קטורים, גובה תלייה וארון חשמל.</p>
+      <button class="btn" type="button" onclick="startQuiz()">התחל חידון</button>
+      <p class="small">מותאם לטלפון: לוחצים על תשובה, מקבלים משוב קצר וממשיכים אוטומטית.</p>
+    </section>
+
+    <section id="quiz" class="card hide" aria-live="polite">
+      <div class="top">
+        <span id="count"></span>
+        <span id="score"></span>
+      </div>
+      <div class="bar" aria-hidden="true"><div id="fill" class="fill"></div></div>
+      <div id="topic" class="topic"></div>
+      <div id="question" class="q"></div>
+      <div id="answers"></div>
+      <div id="explain" class="explain"></div>
+    </section>
+
+    <section id="end" class="card hide">
+      <div class="icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 21h8"></path>
+          <path d="M12 17v4"></path>
+          <path d="M7 4h10v5a5 5 0 0 1-10 0V4Z"></path>
+          <path d="M5 5H3v3a4 4 0 0 0 4 4"></path>
+          <path d="M19 5h2v3a4 4 0 0 1-4 4"></path>
+        </svg>
+      </div>
+      <h2 class="title">סיימת!</h2>
+      <div class="result" id="finalScore"></div>
+      <p class="sub" id="msg"></p>
+      <button class="btn" type="button" onclick="startQuiz()">שחק שוב</button>
+      <div id="summary" class="summary"></div>
+    </section>
+  </main>
+
+  <script>
+    const questions = [
+      {
+        topic: "הארקה",
+        q: "מה התפקיד העיקרי של הארקה במערכת חשמלית?",
+        a: [
+          "להגן על המשתמשים והמוצרים על ידי הולכת זרמי תקלה אל האדמה",
+          "להגדיל את עוצמת התאורה",
+          "להחליף את מפסק הפחת",
+          "לחבר נורות לגרילנדה"
+        ],
+        c: 0,
+        e: "הארקה היא אמצעי בטיחות שמספק נתיב בטוח יותר לזרם במקרה של תקלה או זליגת חשמל."
+      },
+      {
+        topic: "אפס",
+        q: "מה מתאר מוליך האפס?",
+        a: [
+          "מוליך שמחזיר את הזרם מהצרכן חזרה למערכת",
+          "המוליך שמחזיק פיזית את גוף התאורה",
+          "מוליך שמיועד רק לגנרטורים",
+          "כבל ללא בידוד"
+        ],
+        c: 0,
+        e: "האפס סוגר את המעגל ומחזיר את הזרם מהצרכן אל מקור ההזנה."
+      },
+      {
+        topic: "פאזה",
+        q: "מהי פאזה?",
+        a: [
+          "מוליך שמביא מתח וזרם אל הצרכן",
+          "חיבור מכני לעמוד תאורה",
+          "שם נוסף לנורת הלוגן",
+          "רכיב שמכבה קצר באופן אוטומטי"
+        ],
+        c: 0,
+        e: "הפאזה היא המוליך הפעיל שמזין את הצרכן בחשמל."
+      },
+      {
+        topic: "גרילנדה",
+        q: "מהי גרילנדה?",
+        a: [
+          "כבל שעליו מותקנים בתי נורה",
+          "ארון שאליו מתנקזים חיבורי החשמל",
+          "מנורת נל\"ג בהספק 400W",
+          "מנגנון שמזהה זליגת חשמל"
+        ],
+        c: 0,
+        e: "גרילנדה היא כבל תאורה עם בתי נורה. ההספק הכולל תלוי בסוג ובמספר המנורות."
+      },
+      {
+        topic: "גרילנדה",
+        q: "מה נאמר לגבי הארקה בגרילנדה?",
+        a: [
+          "לגרילנדה אין הארקה",
+          "חובה לחבר אליה שלוש הארקות",
+          "היא משמשת בתור הארקה לגנרטור",
+          "היא מחליפה את הפחת בארון"
+        ],
+        c: 0,
+        e: "לפי המידע שסיפקת, לגרילנדה אין הארקה, לכן חשוב להשתמש בה לפי הנחיות בטיחות ולא להעמיס עליה."
+      },
+      {
+        topic: "פרוז'קטור הלוגן",
+        q: "מהו סיכון מרכזי בפרוז'קטור הלוגן?",
+        a: [
+          "הגוף מתחמם מהר ועלול להיות מסוכן ליד חומרים דליקים",
+          "הוא אינו מפיק אור",
+          "הוא עובד רק מתחת לגובה 2.5 מטר",
+          "הוא תמיד צורך פחות חשמל מלד"
+        ],
+        c: 0,
+        e: "פרוז'קטור הלוגן מפיק אור חם ונקודתי, ובית הפרוז'קטור עשוי להתחמם מאוד."
+      },
+      {
+        topic: "פרוז'קטור לד",
+        q: "מה היתרון המרכזי של פרוז'קטור לד לעומת הלוגן?",
+        a: [
+          "צריכת חשמל נמוכה בהרבה",
+          "חייבים להניח אותו על חומר דליק",
+          "הוא תמיד בהספק 400W",
+          "הוא אינו מתאים לתאורה"
+        ],
+        c: 0,
+        e: "לד צורך פחות חשמל ביחס להלוגן, ולכן הוא יעיל יותר לשימושי תאורה רבים."
+      },
+      {
+        topic: "נל\"ג",
+        q: "מה מתאר המונח נל\"ג?",
+        a: [
+          "גוף תאורה עם מנורה בהספק 400W, שכיום לרוב פחות בשימוש",
+          "כבל עם בתי נורה ללא הארקה",
+          "מפסק שמזהה קצר",
+          "גובה תלייה מינימלי"
+        ],
+        c: 0,
+        e: "נל\"ג הוא גוף תאורה עם מנורה חזקה. במידע צוין שהוא לרוב כבר פחות בשימוש."
+      },
+      {
+        topic: "גובה תלייה",
+        q: "מהו הגובה המינימלי לתליית כבלים או גופי תאורה?",
+        a: [
+          "2.5 מטר",
+          "1 מטר",
+          "40 ס\"מ",
+          "אין הגבלת גובה"
+        ],
+        c: 0,
+        e: "הגובה המינימלי שצוין הוא 2.5 מטר, כדי לצמצם מגע מקרי וסיכונים בשטח."
+      },
+      {
+        topic: "ארון חשמל",
+        q: "מה תפקיד מפסק הפחת בארון חשמל?",
+        a: [
+          "לנתק חשמל כאשר הוא מזהה זליגת חשמל או קצר",
+          "לחמם פרוז'קטור הלוגן",
+          "להחזיק את עמוד התאורה",
+          "להגדיל את מספר בתי הנורה"
+        ],
+        c: 0,
+        e: "מפסק פחת נועד לשפר בטיחות על ידי ניתוק ההזנה כאשר מזוהה זליגה או תקלה מסוכנת."
+      }
+    ];
+
+    let i = 0;
+    let score = 0;
+    let locked = false;
+    let given = [];
+    let playQuestions = [];
+
+    function $(id) {
+      return document.getElementById(id);
+    }
+
+    function shuffled(list) {
+      const copy = [...list];
+      for (let index = copy.length - 1; index > 0; index--) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+      }
+      return copy;
+    }
+
+    function prepareQuestions() {
+      playQuestions = questions.map(question => {
+        const answers = question.a.map((text, index) => ({
+          text,
+          originalIndex: index,
+          correct: index === question.c
+        }));
+        return {
+          ...question,
+          shuffledAnswers: shuffled(answers)
+        };
+      });
+    }
+
+    function startQuiz() {
+      i = 0;
+      score = 0;
+      locked = false;
+      given = [];
+      prepareQuestions();
+      $("start").classList.add("hide");
+      $("end").classList.add("hide");
+      $("quiz").classList.remove("hide");
+      $("summary").innerHTML = "";
+      showQ();
+    }
+
+    function showQ() {
+      locked = false;
+      const cur = playQuestions[i];
+      $("count").textContent = "שאלה " + (i + 1) + " מתוך " + playQuestions.length;
+      $("score").textContent = "ניקוד: " + score;
+      $("fill").style.width = (i / playQuestions.length * 100) + "%";
+      $("topic").textContent = cur.topic;
+      $("question").textContent = cur.q;
+      $("explain").textContent = "";
+
+      const ans = $("answers");
+      ans.innerHTML = "";
+      cur.shuffledAnswers.forEach((answer, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "choice";
+        btn.type = "button";
+        btn.textContent = answer.text;
+        btn.onclick = () => pick(btn, idx);
+        ans.appendChild(btn);
+      });
+    }
+
+    function pick(btn, idx) {
+      if (locked) return;
+      locked = true;
+      const cur = playQuestions[i];
+      const selected = cur.shuffledAnswers[idx];
+      given[i] = selected;
+
+      document.querySelectorAll(".choice").forEach((choice, n) => {
+        choice.disabled = true;
+        if (cur.shuffledAnswers[n].correct) choice.classList.add("correct");
+      });
+
+      if (selected.correct) {
+        score++;
+        $("score").textContent = "ניקוד: " + score;
+      } else {
+        btn.classList.add("wrong");
+      }
+
+      $("explain").textContent = cur.e;
+
+      setTimeout(() => {
+        i++;
+        if (i < playQuestions.length) {
+          showQ();
+        } else {
+          finish();
+        }
+      }, 1400);
+    }
+
+    function finish() {
+      const percent = Math.round(score / playQuestions.length * 100);
+      $("quiz").classList.add("hide");
+      $("end").classList.remove("hide");
+      $("fill").style.width = "100%";
+      $("finalScore").textContent = score + " / " + playQuestions.length;
+      $("msg").textContent = percent >= 80
+        ? "מצוין. נראה שהבסיס של בטיחות חשמל ותאורה יושב טוב."
+        : percent >= 60
+          ? "יפה מאוד. עוד סיבוב קצר יחזק את המונחים הפחות בטוחים."
+          : "כדאי לעבור שוב על המונחים ואז לנסות פעם נוספת.";
+      renderSummary();
+    }
+
+    function renderSummary() {
+      const box = $("summary");
+      box.innerHTML = "";
+      playQuestions.forEach((cur, index) => {
+        const item = document.createElement("details");
+        const chosen = given[index];
+        item.innerHTML = `
+          <summary>${index + 1}. ${cur.topic}</summary>
+          <p><strong>שאלה:</strong> ${cur.q}</p>
+          <p><strong>התשובה הנכונה:</strong> ${cur.a[cur.c]}</p>
+          <p><strong>התשובה שלך:</strong> ${chosen === undefined ? "לא נענתה" : chosen.text}</p>
+        `;
+        box.appendChild(item);
+      });
+    }
+  </script>
+</body>
+</html>
