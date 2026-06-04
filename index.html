@@ -229,6 +229,37 @@
       transition: width 0.25s ease;
     }
 
+    .timer {
+      margin-top: 12px;
+      color: #c8d1de;
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .timer-bar {
+      height: 10px;
+      margin-top: 8px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: #101827;
+    }
+
+    .timer-fill {
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      background: #2ed573;
+      transition: width 0.25s linear, background 0.25s ease;
+    }
+
+    .timer-fill.warning {
+      background: #ffc226;
+    }
+
+    .timer-fill.danger {
+      background: #ff4757;
+    }
+
     .topic {
       display: inline-flex;
       margin-top: 18px;
@@ -440,6 +471,8 @@
         <span id="score"></span>
       </div>
       <div class="bar" aria-hidden="true"><div id="fill" class="fill"></div></div>
+      <div class="timer" id="timerText">זמן לשאלה: 20 שניות</div>
+      <div class="timer-bar" aria-hidden="true"><div id="timerFill" class="timer-fill"></div></div>
       <div id="topic" class="topic"></div>
       <div id="question" class="q"></div>
       <div id="answers"></div>
@@ -599,6 +632,9 @@
     let given = [];
     let playQuestions = [];
     let currentPlayer = "";
+    let timerId = 0;
+    let secondsLeft = 20;
+    const secondsPerQuestion = 20;
     const supabaseUrl = "https://vukxeglljxgpvbqulsrl.supabase.co";
     const supabaseKey = "sb_publishable_s85hzn9UReEVyub-SXRtvw_8DiM_YZF";
     const scoresEndpoint = `${supabaseUrl}/rest/v1/scores`;
@@ -765,6 +801,66 @@
       });
     }
 
+    function stopTimer() {
+      if (timerId) {
+        clearInterval(timerId);
+        timerId = 0;
+      }
+    }
+
+    function updateTimerDisplay() {
+      $("timerText").textContent = "זמן לשאלה: " + secondsLeft + " שניות";
+      const percentLeft = Math.max(secondsLeft, 0) / secondsPerQuestion * 100;
+      const fill = $("timerFill");
+      fill.style.width = percentLeft + "%";
+      fill.classList.toggle("warning", secondsLeft <= 10 && secondsLeft > 5);
+      fill.classList.toggle("danger", secondsLeft <= 5);
+    }
+
+    function startQuestionTimer() {
+      stopTimer();
+      secondsLeft = secondsPerQuestion;
+      updateTimerDisplay();
+
+      timerId = setInterval(() => {
+        secondsLeft--;
+        updateTimerDisplay();
+        if (secondsLeft <= 0) {
+          handleTimeout();
+        }
+      }, 1000);
+    }
+
+    function goNextQuestion() {
+      setTimeout(() => {
+        i++;
+        if (i < playQuestions.length) {
+          showQ();
+        } else {
+          finish();
+        }
+      }, 1400);
+    }
+
+    function handleTimeout() {
+      if (locked) return;
+      locked = true;
+      stopTimer();
+      const cur = playQuestions[i];
+      given[i] = undefined;
+      score -= 5;
+
+      document.querySelectorAll(".choice").forEach((choice, n) => {
+        choice.disabled = true;
+        if (cur.shuffledAnswers[n].correct) choice.classList.add("correct");
+      });
+
+      $("score").textContent = "ניקוד: " + score;
+      $("timerText").textContent = "הזמן נגמר";
+      $("explain").textContent = "הזמן נגמר ולכן השאלה נחשבת כטעות: מינוס 5 נקודות. " + cur.e;
+      goNextQuestion();
+    }
+
     function startQuiz(event) {
       if (event) event.preventDefault();
       currentPlayer = cleanName($("playerName").value);
@@ -789,6 +885,7 @@
     }
 
     function showStart() {
+      stopTimer();
       $("quiz").classList.add("hide");
       $("end").classList.add("hide");
       $("start").classList.remove("hide");
@@ -818,11 +915,13 @@
         btn.onclick = () => pick(btn, idx);
         ans.appendChild(btn);
       });
+      startQuestionTimer();
     }
 
     function pick(btn, idx) {
       if (locked) return;
       locked = true;
+      stopTimer();
       const cur = playQuestions[i];
       const selected = cur.shuffledAnswers[idx];
       given[i] = selected;
@@ -843,17 +942,11 @@
       $("score").textContent = "ניקוד: " + score;
       $("explain").textContent = cur.e;
 
-      setTimeout(() => {
-        i++;
-        if (i < playQuestions.length) {
-          showQ();
-        } else {
-          finish();
-        }
-      }, 1400);
+      goNextQuestion();
     }
 
     function finish() {
+      stopTimer();
       const percent = Math.round(correctAnswers / playQuestions.length * 100);
       $("quiz").classList.add("hide");
       $("end").classList.remove("hide");
