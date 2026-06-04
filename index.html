@@ -101,6 +101,105 @@
       font-weight: 900;
     }
 
+    .name-form {
+      display: grid;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .field {
+      width: 100%;
+      min-height: 58px;
+      padding: 14px 16px;
+      border: 2px solid #344258;
+      border-radius: 16px;
+      background: #111a28;
+      color: #ffffff;
+      font-size: clamp(18px, 3vw, 21px);
+      font-weight: 700;
+      outline: none;
+    }
+
+    .field:focus {
+      border-color: #ffc226;
+    }
+
+    .field::placeholder {
+      color: #7f8da1;
+    }
+
+    .error {
+      min-height: 22px;
+      color: #ffb4bc;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .leaderboard {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid #344258;
+    }
+
+    .leaderboard h3 {
+      margin: 0 0 12px;
+      color: #ffffff;
+      font-size: clamp(21px, 4vw, 26px);
+      line-height: 1.15;
+    }
+
+    .score-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 16px;
+      background: #111a28;
+      color: #c8d1de;
+      font-size: 15px;
+    }
+
+    .score-table th,
+    .score-table td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #263449;
+      text-align: right;
+      vertical-align: middle;
+    }
+
+    .score-table th {
+      color: #ffc226;
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .score-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .empty-board {
+      margin: 0;
+      color: #aab6c6;
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .ghost-btn {
+      width: 100%;
+      min-height: 46px;
+      margin-top: 12px;
+      padding: 11px 14px;
+      border: 1px solid #344258;
+      border-radius: 14px;
+      background: transparent;
+      color: #c8d1de;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .ghost-btn:active {
+      transform: scale(0.98);
+    }
+
     .btn:active,
     .choice:active {
       transform: scale(0.98);
@@ -322,8 +421,17 @@
       </div>
       <h1 class="title">חידון בטיחות חשמל</h1>
       <p class="sub">חידון קצר על הארקה, פאזה, אפס, גרילנדה, פרוז'קטורים, גובה תלייה וארון חשמל.</p>
-      <button class="btn" type="button" onclick="startQuiz()">התחל חידון</button>
+      <form class="name-form" onsubmit="startQuiz(event)">
+        <input id="playerName" class="field" type="text" maxlength="24" autocomplete="name" placeholder="שם המשתתף" aria-label="שם המשתתף">
+        <div id="nameError" class="error" aria-live="polite"></div>
+        <button class="btn" type="submit">התחל חידון</button>
+      </form>
       <p class="small">מותאם לטלפון: לוחצים על תשובה, מקבלים משוב קצר וממשיכים אוטומטית.</p>
+      <div class="leaderboard">
+        <h3>טבלת אלופים</h3>
+        <div id="startLeaderboard"></div>
+        <button class="ghost-btn" type="button" onclick="clearLeaderboard()">נקה טבלה</button>
+      </div>
     </section>
 
     <section id="quiz" class="card hide" aria-live="polite">
@@ -351,7 +459,11 @@
       <h2 class="title">סיימת!</h2>
       <div class="result" id="finalScore"></div>
       <p class="sub" id="msg"></p>
-      <button class="btn" type="button" onclick="startQuiz()">שחק שוב</button>
+      <button class="btn" type="button" onclick="showStart()">שחק שוב</button>
+      <div class="leaderboard">
+        <h3>טבלת אלופים</h3>
+        <div id="endLeaderboard"></div>
+      </div>
       <div id="summary" class="summary"></div>
     </section>
   </main>
@@ -485,9 +597,108 @@
     let locked = false;
     let given = [];
     let playQuestions = [];
+    let currentPlayer = "";
+    const leaderboardKey = "electricQuizLeaderboard";
 
     function $(id) {
       return document.getElementById(id);
+    }
+
+    function cleanName(name) {
+      return name.trim().replace(/\s+/g, " ").slice(0, 24);
+    }
+
+    function escapeHtml(value) {
+      return value.replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      })[char]);
+    }
+
+    function getLeaderboard() {
+      try {
+        return JSON.parse(localStorage.getItem(leaderboardKey)) || [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveLeaderboard(entries) {
+      localStorage.setItem(leaderboardKey, JSON.stringify(entries.slice(0, 10)));
+    }
+
+    function formatDate(value) {
+      return new Intl.DateTimeFormat("he-IL", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      }).format(new Date(value));
+    }
+
+    function renderLeaderboard(targetId) {
+      const target = $(targetId);
+      if (!target) return;
+
+      const entries = getLeaderboard();
+      if (!entries.length) {
+        target.innerHTML = '<p class="empty-board">עדיין אין ציונים. הראשון שמסיים נכנס ישר לטבלה.</p>';
+        return;
+      }
+
+      const rows = entries.map((entry, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(entry.name)}</td>
+          <td>${entry.score}/${entry.total}</td>
+          <td>${entry.percent}%</td>
+          <td>${formatDate(entry.date)}</td>
+        </tr>
+      `).join("");
+
+      target.innerHTML = `
+        <table class="score-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>שם</th>
+              <th>ניקוד</th>
+              <th>%</th>
+              <th>זמן</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function addScoreToLeaderboard(percent) {
+      const entries = getLeaderboard();
+      entries.push({
+        name: currentPlayer,
+        score,
+        total: playQuestions.length,
+        percent,
+        date: new Date().toISOString()
+      });
+
+      entries.sort((a, b) => {
+        if (b.percent !== a.percent) return b.percent - a.percent;
+        return new Date(a.date) - new Date(b.date);
+      });
+
+      saveLeaderboard(entries);
+      renderLeaderboard("startLeaderboard");
+      renderLeaderboard("endLeaderboard");
+    }
+
+    function clearLeaderboard() {
+      localStorage.removeItem(leaderboardKey);
+      renderLeaderboard("startLeaderboard");
+      renderLeaderboard("endLeaderboard");
     }
 
     function shuffled(list) {
@@ -513,7 +724,16 @@
       });
     }
 
-    function startQuiz() {
+    function startQuiz(event) {
+      if (event) event.preventDefault();
+      currentPlayer = cleanName($("playerName").value);
+      if (!currentPlayer) {
+        $("nameError").textContent = "צריך להכניס שם לפני שמתחילים.";
+        $("playerName").focus();
+        return;
+      }
+
+      $("nameError").textContent = "";
       i = 0;
       score = 0;
       locked = false;
@@ -524,6 +744,16 @@
       $("quiz").classList.remove("hide");
       $("summary").innerHTML = "";
       showQ();
+    }
+
+    function showStart() {
+      $("quiz").classList.add("hide");
+      $("end").classList.add("hide");
+      $("start").classList.remove("hide");
+      $("summary").innerHTML = "";
+      $("nameError").textContent = "";
+      renderLeaderboard("startLeaderboard");
+      $("playerName").focus();
     }
 
     function showQ() {
@@ -590,6 +820,7 @@
         : percent >= 60
           ? "יפה מאוד. עוד סיבוב קצר יחזק את המונחים הפחות בטוחים."
           : "כדאי לעבור שוב על המונחים ואז לנסות פעם נוספת.";
+      addScoreToLeaderboard(percent);
       renderSummary();
     }
 
@@ -608,6 +839,8 @@
         box.appendChild(item);
       });
     }
+
+    renderLeaderboard("startLeaderboard");
   </script>
 </body>
 </html>
