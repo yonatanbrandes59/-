@@ -426,7 +426,7 @@
         <div id="nameError" class="error" aria-live="polite"></div>
         <button class="btn" type="submit">התחל חידון</button>
       </form>
-      <p class="small">מותאם לטלפון: לוחצים על תשובה, מקבלים משוב קצר וממשיכים אוטומטית.</p>
+      <p class="small">מותאם לטלפון: תשובה נכונה מוסיפה 10 נקודות, טעות מורידה 5 נקודות.</p>
       <div class="leaderboard">
         <h3>טבלת אלופים</h3>
         <div id="startLeaderboard"></div>
@@ -594,6 +594,7 @@
 
     let i = 0;
     let score = 0;
+    let correctAnswers = 0;
     let locked = false;
     let given = [];
     let playQuestions = [];
@@ -653,7 +654,7 @@
         <tr>
           <td>${index + 1}</td>
           <td>${escapeHtml(entry.name)}</td>
-          <td>${entry.score}/${entry.total}</td>
+          <td>${entry.score} נק'</td>
           <td>${entry.percent}%</td>
           <td>${formatDate(entry.date)}</td>
         </tr>
@@ -680,12 +681,14 @@
       entries.push({
         name: currentPlayer,
         score,
+        correctAnswers,
         total: playQuestions.length,
         percent,
         date: new Date().toISOString()
       });
 
       entries.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
         if (b.percent !== a.percent) return b.percent - a.percent;
         return new Date(a.date) - new Date(b.date);
       });
@@ -736,6 +739,7 @@
       $("nameError").textContent = "";
       i = 0;
       score = 0;
+      correctAnswers = 0;
       locked = false;
       given = [];
       prepareQuestions();
@@ -791,12 +795,14 @@
       });
 
       if (selected.correct) {
-        score++;
-        $("score").textContent = "ניקוד: " + score;
+        score += 10;
+        correctAnswers++;
       } else {
+        score -= 5;
         btn.classList.add("wrong");
       }
 
+      $("score").textContent = "ניקוד: " + score;
       $("explain").textContent = cur.e;
 
       setTimeout(() => {
@@ -810,11 +816,11 @@
     }
 
     function finish() {
-      const percent = Math.round(score / playQuestions.length * 100);
+      const percent = Math.round(correctAnswers / playQuestions.length * 100);
       $("quiz").classList.add("hide");
       $("end").classList.remove("hide");
       $("fill").style.width = "100%";
-      $("finalScore").textContent = score + " / " + playQuestions.length;
+      $("finalScore").textContent = score + " נקודות";
       $("msg").textContent = percent >= 80
         ? "מצוין. נראה שהבסיס של בטיחות חשמל ותאורה יושב טוב."
         : percent >= 60
