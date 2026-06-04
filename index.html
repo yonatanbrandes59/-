@@ -430,7 +430,7 @@
       <div class="leaderboard">
         <h3>טבלת אלופים</h3>
         <div id="startLeaderboard"></div>
-        <button class="ghost-btn" type="button" onclick="clearLeaderboard()">נקה טבלה</button>
+        <button class="ghost-btn" type="button" onclick="loadLeaderboards()">רענן טבלה</button>
       </div>
     </section>
 
@@ -599,7 +599,9 @@
     let given = [];
     let playQuestions = [];
     let currentPlayer = "";
-    const leaderboardKey = "electricQuizLeaderboard";
+    const supabaseUrl = "https://vukxeglljxgpvbqulsrl.supabase.co";
+    const supabaseKey = "sb_publishable_s85hzn9UReEVyub-SXRtvw_8DiM_YZF";
+    const scoresEndpoint = `${supabaseUrl}/rest/v1/scores`;
 
     function $(id) {
       return document.getElementById(id);
@@ -619,18 +621,6 @@
       })[char]);
     }
 
-    function getLeaderboard() {
-      try {
-        return JSON.parse(localStorage.getItem(leaderboardKey)) || [];
-      } catch (error) {
-        return [];
-      }
-    }
-
-    function saveLeaderboard(entries) {
-      localStorage.setItem(leaderboardKey, JSON.stringify(entries.slice(0, 10)));
-    }
-
     function formatDate(value) {
       return new Intl.DateTimeFormat("he-IL", {
         day: "2-digit",
@@ -640,11 +630,42 @@
       }).format(new Date(value));
     }
 
-    function renderLeaderboard(targetId) {
+    function supabaseHeaders(extra = {}) {
+      return {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        ...extra
+      };
+    }
+
+    function normalizeScore(entry) {
+      return {
+        name: entry.name,
+        score: Number(entry.score) || 0,
+        correctAnswers: Number(entry.correct_answers) || 0,
+        total: Number(entry.total) || 0,
+        percent: Number(entry.percent) || 0,
+        date: entry.created_at || entry.date || new Date().toISOString()
+      };
+    }
+
+    async function getLeaderboard() {
+      const url = `${scoresEndpoint}?select=name,score,correct_answers,total,percent,created_at&order=score.desc&order=percent.desc&order=created_at.asc&limit=10`;
+      const response = await fetch(url, {
+        headers: supabaseHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error("לא ניתן לטעון את טבלת האלופים כרגע.");
+      }
+
+      return (await response.json()).map(normalizeScore);
+    }
+
+    function renderLeaderboardEntries(targetId, entries) {
       const target = $(targetId);
       if (!target) return;
 
-      const entries = getLeaderboard();
       if (!entries.length) {
         target.innerHTML = '<p class="empty-board">עדיין אין ציונים. הראשון שמסיים נכנס ישר לטבלה.</p>';
         return;
@@ -676,32 +697,49 @@
       `;
     }
 
-    function addScoreToLeaderboard(percent) {
-      const entries = getLeaderboard();
-      entries.push({
-        name: currentPlayer,
-        score,
-        correctAnswers,
-        total: playQuestions.length,
-        percent,
-        date: new Date().toISOString()
-      });
-
-      entries.sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        if (b.percent !== a.percent) return b.percent - a.percent;
-        return new Date(a.date) - new Date(b.date);
-      });
-
-      saveLeaderboard(entries);
-      renderLeaderboard("startLeaderboard");
-      renderLeaderboard("endLeaderboard");
+    function renderLeaderboardMessage(targetId, message) {
+      const target = $(targetId);
+      if (!target) return;
+      target.innerHTML = `<p class="empty-board">${message}</p>`;
     }
 
-    function clearLeaderboard() {
-      localStorage.removeItem(leaderboardKey);
-      renderLeaderboard("startLeaderboard");
-      renderLeaderboard("endLeaderboard");
+    async function loadLeaderboards() {
+      renderLeaderboardMessage("startLeaderboard", "טוען טבלת אלופים...");
+      renderLeaderboardMessage("endLeaderboard", "טוען טבלת אלופים...");
+
+      try {
+        const entries = await getLeaderboard();
+        renderLeaderboardEntries("startLeaderboard", entries);
+        renderLeaderboardEntries("endLeaderboard", entries);
+      } catch (error) {
+        renderLeaderboardMessage("startLeaderboard", "לא ניתן לטעון את טבלת האלופים. בדקו שהטבלה וההרשאות ב-Supabase הוגדרו.");
+        renderLeaderboardMessage("endLeaderboard", "לא ניתן לטעון את טבלת האלופים. בדקו שהטבלה וההרשאות ב-Supabase הוגדרו.");
+      }
+    }
+
+    async function addScoreToLeaderboard(percent) {
+      const payload = {
+        name: currentPlayer,
+        score,
+        correct_answers: correctAnswers,
+        total: playQuestions.length,
+        percent
+      };
+
+      const response = await fetch(scoresEndpoint, {
+        method: "POST",
+        headers: supabaseHeaders({
+          "Content-Type": "application/json",
+          Prefer: "return=minimal"
+        }),
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error("לא ניתן לשמור את הציון כרגע.");
+      }
+
+      await loadLeaderboards();
     }
 
     function shuffled(list) {
@@ -756,7 +794,7 @@
       $("start").classList.remove("hide");
       $("summary").innerHTML = "";
       $("nameError").textContent = "";
-      renderLeaderboard("startLeaderboard");
+      loadLeaderboards();
       $("playerName").focus();
     }
 
@@ -826,7 +864,9 @@
         : percent >= 60
           ? "יפה מאוד. עוד סיבוב קצר יחזק את המונחים הפחות בטוחים."
           : "כדאי לעבור שוב על המונחים ואז לנסות פעם נוספת.";
-      addScoreToLeaderboard(percent);
+      addScoreToLeaderboard(percent).catch(() => {
+        renderLeaderboardMessage("endLeaderboard", "הציון לא נשמר. בדקו שהטבלה וההרשאות ב-Supabase הוגדרו.");
+      });
       renderSummary();
     }
 
@@ -846,7 +886,7 @@
       });
     }
 
-    renderLeaderboard("startLeaderboard");
+    loadLeaderboards();
   </script>
 </body>
 </html>
